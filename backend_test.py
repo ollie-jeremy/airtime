@@ -482,17 +482,48 @@ def main():
         # Test 4: Create new duty
         create_success, created_duty = tester.test_create_duty()
         
-        # Test 5: Get schedule duties (empty)
+        # Test 5: Get personnel (should return 8 seeded personnel)
+        personnel_success, all_personnel = tester.test_get_personnel()
+        if not personnel_success:
+            print("❌ Critical: Cannot get personnel - continuing but with limited tests")
+            all_personnel = []
+        
+        # Test 6: Personnel filtering by availability
+        if personnel_success:
+            tester.test_personnel_filtering()
+        
+        # Test 7: Personnel search
+        if personnel_success:
+            tester.test_personnel_search()
+        
+        # Test 8: Get schedule duties (empty)
         tester.test_get_schedule_duties_empty()
         
-        # Test 6: Add duty to schedule
+        # Test 9: Add duty to schedule
         schedule_success, scheduled_duty = tester.test_add_schedule_duty(all_duties)
         
-        # Test 7: Get schedule duties (with data)
+        # Test 10: Get schedule duties (with data)
         if schedule_success:
             tester.test_get_schedule_duties_with_data()
+        
+        # Test 11: Get assignments (empty)
+        tester.test_get_assignments_empty()
+        
+        # Test 12: Create assignment
+        assignment_created = None
+        if schedule_success and personnel_success:
+            assignment_success, assignment_created = tester.test_create_assignment(all_personnel)
+        
+        # Test 13: Get assignments (with data)
+        if assignment_created:
+            assignment_get_success, assignments_list = tester.test_get_assignments_with_data()
             
-            # Test 8: Remove scheduled duty
+            # Test 14: Delete assignment
+            if assignment_get_success and assignments_list:
+                tester.test_delete_assignment(assignments_list[0])
+        
+        # Test 15: Remove scheduled duty
+        if schedule_success:
             tester.test_remove_schedule_duty()
         
         # Clean up and print results
