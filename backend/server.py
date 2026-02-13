@@ -42,7 +42,7 @@ class ScheduleDuty(BaseModel):
     duty_name: str
     duty_code: str
     qualifications: List[str] = []
-    date: str  # YYYY-MM-DD
+    date: str
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 class ScheduleDutyCreate(BaseModel):
@@ -51,6 +51,47 @@ class ScheduleDutyCreate(BaseModel):
     duty_code: str
     qualifications: List[str] = []
     date: str
+
+class Personnel(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    callsign: str
+    name: str
+    qualifications: List[str] = []
+    total_duties: int = 0
+    available: bool = True
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class PersonnelCreate(BaseModel):
+    callsign: str
+    name: str
+    qualifications: List[str] = []
+    available: bool = True
+
+class Assignment(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    schedule_duty_id: str
+    duty_code: str
+    duty_name: str
+    personnel_id: str
+    personnel_name: str
+    personnel_callsign: str
+    date: str
+    start_time: str
+    end_time: str
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class AssignmentCreate(BaseModel):
+    schedule_duty_id: str
+    duty_code: str
+    duty_name: str
+    personnel_id: str
+    personnel_name: str
+    personnel_callsign: str
+    date: str
+    start_time: str
+    end_time: str
 
 # --- Seed Data ---
 
@@ -63,6 +104,17 @@ SEED_DUTIES = [
     {"name": "Logistics Support", "code": "L1", "qualifications": ["Heavy Lift"]},
 ]
 
+SEED_PERSONNEL = [
+    {"callsign": "Alpha-1", "name": "John Miller", "qualifications": ["Security L1", "Firearm", "Comms"], "total_duties": 7, "available": True},
+    {"callsign": "Alpha-2", "name": "Sarah Chen", "qualifications": ["Security L1", "Security L2", "Patrol"], "total_duties": 5, "available": True},
+    {"callsign": "Bravo-1", "name": "Marcus Lee", "qualifications": ["Driver", "Security L1", "Heavy Lift"], "total_duties": 3, "available": True},
+    {"callsign": "Bravo-2", "name": "Emily Park", "qualifications": ["Admin", "Comms", "Security L1"], "total_duties": 6, "available": True},
+    {"callsign": "Charlie-1", "name": "David Kim", "qualifications": ["Security L2", "Firearm", "Patrol"], "total_duties": 4, "available": True},
+    {"callsign": "Charlie-2", "name": "Jessica Wang", "qualifications": ["Heavy Lift", "Driver"], "total_duties": 2, "available": True},
+    {"callsign": "Delta-1", "name": "Ryan Torres", "qualifications": ["Comms", "Admin"], "total_duties": 8, "available": False},
+    {"callsign": "Delta-2", "name": "Olivia Brown", "qualifications": ["Security L1", "Firearm", "Security L2"], "total_duties": 5, "available": False},
+]
+
 async def seed_duties():
     count = await db.duties.count_documents({})
     if count == 0:
@@ -71,7 +123,15 @@ async def seed_duties():
             await db.duties.insert_one(duty.model_dump())
         logger.info(f"Seeded {len(SEED_DUTIES)} duties")
 
-# --- Routes ---
+async def seed_personnel():
+    count = await db.personnel.count_documents({})
+    if count == 0:
+        for p in SEED_PERSONNEL:
+            person = Personnel(**p)
+            await db.personnel.insert_one(person.model_dump())
+        logger.info(f"Seeded {len(SEED_PERSONNEL)} personnel")
+
+# --- Duty Routes ---
 
 @api_router.get("/")
 async def root():
@@ -111,6 +171,53 @@ async def remove_schedule_duty(duty_id: str):
         raise HTTPException(status_code=404, detail="Schedule duty not found")
     return {"deleted": True}
 
+# --- Personnel Routes ---
+
+@api_router.get("/personnel", response_model=List[Personnel])
+async def get_personnel(search: Optional[str] = None, available: Optional[bool] = None):
+    query = {}
+    if search:
+        query["$or"] = [
+            {"callsign": {"$regex": search, "$options": "i"}},
+            {"name": {"$regex": search, "$options": "i"}},
+        ]
+    if available is not None:
+        query["available"] = available
+    personnel = await db.personnel.find(query, {"_id": 0}).to_list(100)
+    return personnel
+
+# --- Assignment Routes ---
+
+@api_router.get("/assignments", response_model=List[Assignment])
+async def get_assignments(date: str):
+    assignments = await db.assignments.find({"date": date}, {"_id": 0}).to_list(100)
+    return assignments
+
+@api_router.post("/assignments", response_model=Assignment)
+async def create_assignment(input: AssignmentCreate):
+    assignment = Assignment(**input.model_dump())
+    doc = assignment.model_dump()
+    await db.assignments.insert_one(doc)
+    # Increment personnel total_duties
+    await db.personnel.update_one(
+        {"id": input.personnel_id},
+        {"$inc": {"total_duties": 1}}
+    )
+    return assignment
+
+@api_router.delete("/assignments/{assignment_id}")
+async def delete_assignment(assignment_id: str):
+    assignment = await db.assignments.find_one({"id": assignment_id}, {"_id": 0})
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    await db.assignments.delete_one({"id": assignment_id})
+    # Decrement personnel total_duties
+    await db.personnel.update_one(
+        {"id": assignment["personnel_id"]},
+        {"$inc": {"total_duties": -1}}
+    )
+    return {"deleted": True}
+
 # --- App Setup ---
 
 app.include_router(api_router)
@@ -132,6 +239,7 @@ logger = logging.getLogger(__name__)
 @app.on_event("startup")
 async def startup():
     await seed_duties()
+    await seed_personnel()
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
