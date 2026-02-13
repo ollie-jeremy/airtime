@@ -245,6 +245,192 @@ class SchedulerAPITester:
             
         return success
 
+    def test_get_personnel(self):
+        """Test getting all personnel (should return 8 seeded personnel)"""
+        success, response = self.run_test(
+            "Get All Personnel",
+            "GET",
+            "personnel",
+            200
+        )
+        
+        if success and isinstance(response, list):
+            print(f"   Found {len(response)} personnel")
+            if len(response) == 8:
+                print("   ✅ Correct number of seeded personnel (8)")
+                available = [p for p in response if p.get('available', False)]
+                unavailable = [p for p in response if not p.get('available', True)]
+                print(f"   Available: {len(available)}, Unavailable: {len(unavailable)}")
+                if len(available) == 6 and len(unavailable) == 2:
+                    print("   ✅ Correct availability distribution (6 available, 2 unavailable)")
+                else:
+                    print(f"   ❌ Expected 6 available, 2 unavailable")
+                    success = False
+            else:
+                print(f"   ❌ Expected 8 personnel, got {len(response)}")
+                success = False
+                
+        return success, response if success else []
+
+    def test_personnel_filtering(self):
+        """Test personnel filtering by availability"""
+        # Test available=true filter
+        success_avail, available_data = self.run_test(
+            "Get Available Personnel", 
+            "GET",
+            "personnel",
+            200,
+            params={"available": True}
+        )
+        
+        if success_avail and isinstance(available_data, list):
+            print(f"   Available personnel: {len(available_data)}")
+            if len(available_data) == 6:
+                print("   ✅ Correct available personnel count")
+            else:
+                print(f"   ❌ Expected 6 available personnel, got {len(available_data)}")
+                success_avail = False
+            
+        # Test available=false filter  
+        success_unavail, unavailable_data = self.run_test(
+            "Get Unavailable Personnel",
+            "GET",
+            "personnel", 
+            200,
+            params={"available": False}
+        )
+        
+        if success_unavail and isinstance(unavailable_data, list):
+            print(f"   Unavailable personnel: {len(unavailable_data)}")
+            if len(unavailable_data) == 2:
+                print("   ✅ Correct unavailable personnel count")
+            else:
+                print(f"   ❌ Expected 2 unavailable personnel, got {len(unavailable_data)}")
+                success_unavail = False
+
+        return success_avail and success_unavail
+
+    def test_personnel_search(self):
+        """Test personnel search by callsign/name"""
+        success, response = self.run_test(
+            "Search Personnel (Alpha)",
+            "GET",
+            "personnel",
+            200,
+            params={"search": "Alpha"}
+        )
+        
+        if success and isinstance(response, list):
+            alpha_personnel = [p for p in response if "Alpha" in p.get('callsign', '') or "Alpha" in p.get('name', '')]
+            print(f"   Found {len(alpha_personnel)} personnel matching 'Alpha'")
+            if len(alpha_personnel) > 0:
+                print("   ✅ Search working correctly")
+            else:
+                print("   ❌ Search should return results for 'Alpha'")
+                success = False
+                
+        return success
+
+    def test_get_assignments_empty(self):
+        """Test getting assignments for a date (should be empty initially)"""
+        test_date = "2026-02-13"
+        success, response = self.run_test(
+            f"Get Assignments ({test_date})",
+            "GET", 
+            "assignments",
+            200,
+            params={"date": test_date}
+        )
+        
+        if success and isinstance(response, list):
+            print(f"   Found {len(response)} assignments for {test_date}")
+            
+        return success
+
+    def test_create_assignment(self, personnel_list=None):
+        """Test creating an assignment"""
+        if not personnel_list or len(personnel_list) == 0:
+            print("❌ No personnel available for assignment")
+            return False
+            
+        if len(self.created_schedule_duties) == 0:
+            print("❌ No scheduled duties available for assignment")
+            return False
+            
+        # Use first available person and first scheduled duty
+        person = personnel_list[0]
+        scheduled_duty = self.created_schedule_duties[0]
+        test_date = "2026-02-13"
+        
+        assignment_data = {
+            "schedule_duty_id": scheduled_duty['id'],
+            "duty_code": scheduled_duty['duty_code'],
+            "duty_name": scheduled_duty['duty_name'], 
+            "personnel_id": person['id'],
+            "personnel_name": person['name'],
+            "personnel_callsign": person['callsign'],
+            "date": test_date,
+            "start_time": "0800",
+            "end_time": "1000"
+        }
+        
+        success, response = self.run_test(
+            f"Create Assignment ({person['callsign']} -> {scheduled_duty['duty_code']})",
+            "POST",
+            "assignments",
+            200,
+            data=assignment_data
+        )
+        
+        if success and isinstance(response, dict):
+            if 'id' in response:
+                print(f"   Created assignment with ID: {response['id']}")
+                return True, response
+            else:
+                print(f"   ❌ No ID in assignment response")
+                success = False
+                
+        return success, response if success else None
+
+    def test_get_assignments_with_data(self):
+        """Test getting assignments after creating one"""
+        test_date = "2026-02-13"
+        success, response = self.run_test(
+            f"Get Assignments (after creating)",
+            "GET",
+            "assignments", 
+            200,
+            params={"date": test_date}
+        )
+        
+        if success and isinstance(response, list):
+            print(f"   Found {len(response)} assignments")
+            if len(response) > 0:
+                print("   ✅ Assignment creation confirmed")
+            else:
+                print("   ❌ Expected to find created assignment")
+                success = False
+                
+        return success, response if success else []
+
+    def test_delete_assignment(self, assignment):
+        """Test deleting an assignment"""
+        if not assignment or 'id' not in assignment:
+            print("❌ No valid assignment to delete")
+            return False
+            
+        success, response = self.run_test(
+            f"Delete Assignment ({assignment['id']})",
+            "DELETE",
+            f"assignments/{assignment['id']}",
+            200
+        )
+        
+        if success:
+            print(f"   Deleted assignment: {assignment['id']}")
+            
+        return success
+
     def cleanup(self):
         """Clean up created test data"""
         print(f"\n🧹 Cleaning up test data...")
