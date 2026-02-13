@@ -329,15 +329,16 @@ export default function DutySlotPanel({
       </div>
 
       {/* Footer: Add Personnels Button */}
-      <div className="px-5 py-4 border-t border-gray-200 bg-white relative z-50">
+      <div className="px-5 pt-4 pb-6 border-t border-gray-200 bg-white">
         <Button
           onClick={handleAddPersonnels}
           disabled={selectedPersonnel.length === 0 || loading}
-          className="w-full bg-slate-800 hover:bg-slate-900 text-white disabled:bg-slate-300 relative z-50"
+          className="w-full bg-slate-800 hover:bg-slate-900 text-white disabled:bg-slate-300"
           data-testid="add-personnels-btn"
         >
           Add Personnels{selectedPersonnel.length > 0 ? ` (${selectedPersonnel.length})` : ""}
         </Button>
+        <div className="h-8" />
       </div>
     </div>
   );
