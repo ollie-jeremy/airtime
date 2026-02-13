@@ -1,0 +1,176 @@
+{
+  "project_name": "OpsScheduler_MVP",
+  "version": "1.0.0",
+  "design_philosophy": {
+    "identity": "E1 - Soft Utility / Swiss High-Contrast",
+    "core_principles": [
+      "Density with Clarity: High information density without visual clutter.",
+      "Swiss Grid: Strict alignment, crisp 1px borders, rational spacing.",
+      "Function over Decoration: Color is used ONLY for status and primary actions.",
+      "Tactile Feedback: Subtle interactions (hover, focus) to make the tool feel responsive."
+    ],
+    "theme_strategy": "Light/Neutral Professional. No Dark Mode."
+  },
+  "typography": {
+    "font_family": {
+      "headings": "Manrope, sans-serif",
+      "body": "IBM Plex Sans, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "scale": {
+      "h1": "text-2xl font-bold tracking-tight",
+      "h2": "text-xl font-semibold tracking-tight",
+      "h3": "text-lg font-medium",
+      "body": "text-sm leading-relaxed",
+      "small": "text-xs font-medium text-muted-foreground",
+      "label": "text-[11px] uppercase tracking-wider font-semibold text-muted-foreground"
+    },
+    "usage": {
+      "headings": "Used for page titles, modal headers, and section labels.",
+      "body": "Used for all general content, duty names, and grid labels.",
+      "mono": "Used for time stamps (0600, 1800) and alphanumeric codes."
+    }
+  },
+  "colors": {
+    "palette": {
+      "background": "#F9FAFB",
+      "surface": "#FFFFFF",
+      "border": "#E5E7EB",
+      "primary": "#0F172A",
+      "primary_foreground": "#FFFFFF",
+      "action": "#2563EB",
+      "action_hover": "#1D4ED8",
+      "success": "#10B981",
+      "warning": "#F59E0B",
+      "error": "#EF4444",
+      "muted": "#F3F4F6",
+      "muted_foreground": "#6B7280"
+    },
+    "semantic_mapping": {
+      "app_bg": "bg-[#F9FAFB]",
+      "card_bg": "bg-white",
+      "border_default": "border-gray-200",
+      "text_primary": "text-slate-900",
+      "text_secondary": "text-slate-500",
+      "grid_line": "border-slate-100",
+      "current_time_indicator": "border-blue-500",
+      "duty_block_bg": "bg-blue-50 border-blue-200 text-blue-700",
+      "conflict_block_bg": "bg-red-50 border-red-200 text-red-700"
+    }
+  },
+  "layout_structure": {
+    "global": {
+      "type": "sidebar_layout",
+      "sidebar_width": "w-64",
+      "header_height": "h-16",
+      "main_content_padding": "p-0"
+    },
+    "calendar_grid": {
+      "description": "A CSS Grid layout representing time slots from 0600 to 1800.",
+      "columns": "grid-cols-[120px_repeat(12,1fr)]",
+      "rows": "auto-rows-[60px]",
+      "gap": "gap-px",
+      "bg_color": "bg-slate-200"
+    }
+  },
+  "components": {
+    "Sidebar": {
+      "path": "src/components/layout/Sidebar.js",
+      "structure": [
+        "Logo Area (Top)",
+        "Navigation Items (Home, Schedules, Movements, Swaps, Notification, Profile)",
+        "Footer (User Profile)"
+      ],
+      "styling": "border-r border-border bg-white h-screen fixed left-0 top-0 w-64 z-30 pt-16"
+    },
+    "Header": {
+      "path": "src/components/layout/Header.js",
+      "structure": [
+        "Breadcrumbs: All Schedules / PRISM 123",
+        "Tabs: Calendar (Active), Swaps",
+        "Action Bar: Auto-Assign, Validate, Publish, Invite"
+      ],
+      "styling": "border-b border-border bg-white h-auto sticky top-0 z-20 px-6 py-3"
+    },
+    "CalendarControls": {
+      "path": "src/components/calendar/CalendarControls.js",
+      "structure": [
+        "Date Navigation (Prev/Next, Date Picker)",
+        "Today Button",
+        "View Toggles (Day/Week/Month)",
+        "Filter Button"
+      ],
+      "styling": "flex justify-between items-center py-4 bg-gray-50/50 border-b border-border px-6"
+    },
+    "CalendarGrid": {
+      "path": "src/components/calendar/CalendarGrid.js",
+      "structure": [
+        "Time Header Row (0600 - 1800)",
+        "Duty Rows (Grouped by personnel or empty)",
+        "Add Duty Trigger Row"
+      ],
+      "styling": "w-full overflow-x-auto"
+    },
+    "AddDutyModal": {
+      "path": "src/components/duties/AddDutyModal.js",
+      "structure": [
+        "Title: Add Single Duty",
+        "Form: Duty Name (Combobox with search)",
+        "Options: Create New Duty link",
+        "Actions: Cancel, Add"
+      ],
+      "interactions": [
+        "Clicking '+ Add Duty' opens modal",
+        "Typing in Combobox filters duties",
+        "Selecting 'Create New Duty' shows toast (mock)",
+        "Clicking 'Add' adds duty to grid"
+      ]
+    }
+  },
+  "assets": {
+    "icons": {
+      "library": "lucide-react",
+      "mapping": {
+        "Home": "Home",
+        "Schedules": "Calendar",
+        "Movements": "Truck",
+        "Swaps": "ArrowLeftRight",
+        "Notification": "Bell",
+        "Profile": "User",
+        "Filter": "Filter",
+        "ChevronLeft": "ChevronLeft",
+        "ChevronRight": "ChevronRight",
+        "Plus": "Plus",
+        "More": "MoreHorizontal",
+        "Search": "Search",
+        "Check": "Check"
+      }
+    },
+    "mock_data": {
+      "duties": [
+        { "id": "d1", "name": "Guard Duty - Main Gate", "code": "G1", "quals": ["Security L1", "Firearm"] },
+        { "id": "d2", "name": "Patrol - Sector A", "code": "P1", "quals": ["Driver", "Security L1"] },
+        { "id": "d3", "name": "Desk Ops - HQ", "code": "D1", "quals": ["Admin", "Comms"] },
+        { "id": "d4", "name": "Logistics Support", "code": "L1", "quals": ["Heavy Lift"] }
+      ],
+      "time_slots": ["0600", "0700", "0800", "0900", "1000", "1100", "1200", "1300", "1400", "1500", "1600", "1700", "1800"]
+    }
+  },
+  "instructions_to_main_agent": {
+    "step_1": "Setup Layout: Create the Sidebar, Header, and Main Layout shell using the defined widths and sticky positioning.",
+    "step_2": "Build Calendar Controls: Implement the date picker (visual only) and view toggles (visual only, 'Day' active).",
+    "step_3": "Build Calendar Grid: Create the grid structure. Use 'grid-template-columns' to ensure perfect alignment between the time header and the content rows. This is CRITICAL.",
+    "step_4": "Implement Add Duty Flow: Create the 'Add Duty' button that triggers the Modal. Use Shadcn Dialog + Combobox.",
+    "step_5": "State Management: Use React useState to track the list of added duties. When 'Add' is clicked in the modal, append a new row to the calendar grid.",
+    "step_6": "Refine: Add hover states to the grid cells and buttons. Ensure the 'Add Duty' row looks clickable.",
+    "testing": "Ensure all interactive elements have data-testid attributes (e.g., 'add-duty-button', 'duty-combobox', 'confirm-add-duty')."
+  },
+  "universal_guidelines": [
+    "Do not use dark gradients.",
+    "Use Manrope for all headings.",
+    "Use IBM Plex Sans for all body text.",
+    "Ensure 1px borders are consistent (#E5E7EB).",
+    "Use 'lucide-react' for all icons.",
+    "Use 'sonner' for notifications."
+  ]
+}
