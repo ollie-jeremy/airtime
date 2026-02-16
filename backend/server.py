@@ -113,6 +113,28 @@ class DutyGroupConfigCreate(BaseModel):
     schedule_duty_id: str
     duties: List[DutyConfigItem] = []
 
+class RecurrencePattern(BaseModel):
+    frequency: str  # "daily", "weekly", "biweekly", "monthly", "custom"
+    interval: int = 1  # every N days/weeks/months
+    end_type: str  # "occurrences", "date", "never"
+    occurrences: Optional[int] = None
+    end_date: Optional[str] = None
+    custom_days: List[int] = []  # For custom: 0=Mon, 1=Tue, etc.
+
+class RecurringAssignmentCreate(BaseModel):
+    schedule_duty_id: str
+    duty_code: str
+    duty_name: str
+    personnel_id: str
+    personnel_name: str
+    personnel_callsign: str
+    start_date: str
+    start_time: str
+    end_time: str
+    recurrence: RecurrencePattern
+    sub_duty_name: str = ""
+    slot_index: int = 0
+
 # --- Seed Data ---
 
 SEED_DUTIES = [
