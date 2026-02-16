@@ -6,7 +6,7 @@ import {
   SlidersHorizontal,
   Settings2,
 } from "lucide-react";
-import { format, addDays, subDays } from "date-fns";
+import { format, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 
 export default function CalendarControls({
   selectedDate,
@@ -15,6 +15,39 @@ export default function CalendarControls({
   onViewChange,
 }) {
   const views = ["Day", "Week", "Month"];
+
+  const handlePrev = () => {
+    if (activeView === "Day") {
+      onDateChange(subDays(selectedDate, 1));
+    } else if (activeView === "Week") {
+      onDateChange(subWeeks(selectedDate, 1));
+    } else if (activeView === "Month") {
+      onDateChange(subMonths(selectedDate, 1));
+    }
+  };
+
+  const handleNext = () => {
+    if (activeView === "Day") {
+      onDateChange(addDays(selectedDate, 1));
+    } else if (activeView === "Week") {
+      onDateChange(addWeeks(selectedDate, 1));
+    } else if (activeView === "Month") {
+      onDateChange(addMonths(selectedDate, 1));
+    }
+  };
+
+  const getDateDisplay = () => {
+    if (activeView === "Day") {
+      return format(selectedDate, "EEE MMM d, yyyy");
+    } else if (activeView === "Week") {
+      const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
+      return `${format(weekStart, "MMM d")} - ${format(weekEnd, "MMM d, yyyy")}`;
+    } else if (activeView === "Month") {
+      return format(selectedDate, "MMMM yyyy");
+    }
+    return format(selectedDate, "EEE MMM d, yyyy");
+  };
 
   return (
     <div
@@ -26,20 +59,20 @@ export default function CalendarControls({
         <div className="flex items-center bg-white border border-gray-200 rounded-md">
           <button
             className="px-2 py-1.5 hover:bg-slate-50 transition-colors rounded-l-md"
-            onClick={() => onDateChange(subDays(selectedDate, 1))}
+            onClick={handlePrev}
             data-testid="prev-date-btn"
           >
             <ChevronLeft className="w-4 h-4 text-slate-600" />
           </button>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 border-x border-gray-200">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 border-x border-gray-200 min-w-[180px] justify-center">
             <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
             <span className="text-sm font-medium text-slate-700" data-testid="current-date">
-              {format(selectedDate, "EEE MMM d, yyyy")}
+              {getDateDisplay()}
             </span>
           </div>
           <button
             className="px-2 py-1.5 hover:bg-slate-50 transition-colors rounded-r-md"
-            onClick={() => onDateChange(addDays(selectedDate, 1))}
+            onClick={handleNext}
             data-testid="next-date-btn"
           >
             <ChevronRight className="w-4 h-4 text-slate-600" />
