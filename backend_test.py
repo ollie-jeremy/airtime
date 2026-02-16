@@ -413,6 +413,143 @@ class SchedulerAPITester:
                 
         return success, response if success else []
 
+    def test_create_group_schedule_duty(self):
+        """Test creating a group schedule duty"""
+        test_date = "2026-02-13"
+        
+        group_data = {
+            "duty_id": f"group-{datetime.now().strftime('%H%M%S')}",
+            "duty_name": f"Test Flight Team - {datetime.now().strftime('%H%M%S')}",
+            "duty_code": "",
+            "duty_type": "group",
+            "qualifications": [],
+            "date": test_date
+        }
+        
+        success, response = self.run_test(
+            "Create Group Schedule Duty",
+            "POST",
+            "schedule-duties",
+            200,
+            data=group_data
+        )
+        
+        if success and isinstance(response, dict):
+            if 'id' in response and response.get('duty_type') == 'group':
+                self.created_schedule_duties.append(response)
+                print(f"   Created group duty with ID: {response['id']}")
+                return True, response
+            else:
+                print(f"⚠️  Invalid group duty response")
+                success = False
+                
+        return success, response if success else None
+
+    def test_save_duty_group_config(self, schedule_duty_id):
+        """Test saving group duty configuration"""
+        config_data = {
+            "schedule_duty_id": schedule_duty_id,
+            "duties": [
+                {"name": "Pilot", "count": 2},
+                {"name": "Tower", "count": 1},
+                {"name": "Ground Control", "count": 1}
+            ]
+        }
+        
+        success, response = self.run_test(
+            "Save Duty Group Config",
+            "POST",
+            "duty-group-configs",
+            200,
+            data=config_data
+        )
+        
+        if success and isinstance(response, dict):
+            if 'id' in response and 'duties' in response:
+                print(f"   Created config with {len(response['duties'])} duty types")
+                return True, response
+            else:
+                print(f"⚠️  Invalid config response")
+                success = False
+                
+        return success, response if success else None
+
+    def test_get_duty_group_config(self, schedule_duty_id):
+        """Test getting group duty configuration"""
+        success, response = self.run_test(
+            f"Get Duty Group Config ({schedule_duty_id})",
+            "GET",
+            f"duty-group-configs/{schedule_duty_id}",
+            200
+        )
+        
+        if success and response:
+            if 'duties' in response:
+                print(f"   Retrieved config with {len(response['duties'])} duty types")
+                return True, response
+            else:
+                print(f"⚠️  Config missing duties field")
+                success = False
+        elif success and not response:
+            print(f"   No config found (expected for new group)")
+            return True, None
+                
+        return success, response if success else None
+
+    def test_create_group_assignment(self, group_duty, personnel_list):
+        """Test creating assignments for group duties"""
+        if not group_duty or not personnel_list:
+            print("❌ Missing group duty or personnel for group assignment")
+            return False
+            
+        if len(personnel_list) < 3:
+            print("❌ Need at least 3 personnel for group assignment test")
+            return False
+            
+        test_date = "2026-02-13"
+        assignments_created = []
+        
+        # Create assignments for different sub-duties
+        group_assignments = [
+            {"sub_duty_name": "Pilot", "slot_index": 0, "person_idx": 0},
+            {"sub_duty_name": "Pilot", "slot_index": 1, "person_idx": 1},
+            {"sub_duty_name": "Tower", "slot_index": 0, "person_idx": 2}
+        ]
+        
+        for assignment_def in group_assignments:
+            person = personnel_list[assignment_def["person_idx"]]
+            assignment_data = {
+                "schedule_duty_id": group_duty['id'],
+                "duty_code": group_duty.get('duty_code', group_duty['duty_name']),
+                "duty_name": group_duty['duty_name'],
+                "personnel_id": person['id'],
+                "personnel_name": person['name'],
+                "personnel_callsign": person['callsign'],
+                "date": test_date,
+                "start_time": "0800",
+                "end_time": "1200",
+                "sub_duty_name": assignment_def["sub_duty_name"],
+                "slot_index": assignment_def["slot_index"]
+            }
+            
+            success, response = self.run_test(
+                f"Create Group Assignment ({person['callsign']} -> {assignment_def['sub_duty_name']}-{assignment_def['slot_index']})",
+                "POST",
+                "assignments",
+                200,
+                data=assignment_data
+            )
+            
+            if success and isinstance(response, dict) and 'id' in response:
+                assignments_created.append(response)
+                
+        if assignments_created:
+            print(f"   Created {len(assignments_created)} group assignments")
+            return True, assignments_created
+        else:
+            print("❌ Failed to create group assignments")
+            return False, []
+
     def test_update_assignment(self, assignment, new_personnel):
         """Test updating/reassigning personnel for an assignment"""
         if not assignment or 'id' not in assignment:
