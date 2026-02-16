@@ -13,7 +13,9 @@ import {
   SlidersHorizontal,
   User,
   Users,
+  Repeat,
 } from "lucide-react";
+import RecurDutyModal from "./RecurDutyModal";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
