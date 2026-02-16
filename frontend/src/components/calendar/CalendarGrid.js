@@ -129,8 +129,280 @@ export default function CalendarGrid({
   assignments = [],
   selectedSlot,
   onAssignmentUpdated,
+  activeView = "Day",
+  baseDate = new Date(),
 }) {
   const [reassignBlock, setReassignBlock] = useState(null);
+
+  // Generate week days for weekly view
+  const getWeekDays = () => {
+    const weekStart = startOfWeek(baseDate, { weekStartsOn: 1 });
+    return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  };
+
+  // Generate calendar days for monthly view
+  const getMonthDays = () => {
+    const monthStart = startOfMonth(baseDate);
+    const monthEnd = endOfMonth(baseDate);
+    const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+    
+    // Get 6 weeks of days for consistent grid
+    const days = [];
+    let current = calendarStart;
+    for (let i = 0; i < 42; i++) {
+      days.push(current);
+      current = addDays(current, 1);
+    }
+    return days;
+  };
+
+  // Get duties for a specific date
+  const getDutiesForDate = (date) => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    return scheduleDuties.filter((d) => d.date === dateStr);
+  };
+
+  // Get assignments for a specific date
+  const getAssignmentsForDate = (date) => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    return assignments.filter((a) => a.date === dateStr);
+  };
+
+  // Render Daily View
+  if (activeView === "Day") {
+    return (
+      <DayView
+        scheduleDuties={scheduleDuties}
+        selectedDate={selectedDate}
+        onDutyAdded={onDutyAdded}
+        onRemoveDuty={onRemoveDuty}
+        onCellClick={onCellClick}
+        assignments={assignments}
+        selectedSlot={selectedSlot}
+        onAssignmentUpdated={onAssignmentUpdated}
+        reassignBlock={reassignBlock}
+        setReassignBlock={setReassignBlock}
+      />
+    );
+  }
+
+  // Render Weekly View
+  if (activeView === "Week") {
+    const weekDays = getWeekDays();
+    
+    return (
+      <div className="calendar-scroll overflow-x-auto" data-testid="calendar-grid-week">
+        <div className="min-w-[1000px]">
+          {/* Week Header */}
+          <div className="grid grid-cols-8 border-b border-gray-200 bg-white sticky top-0 z-10">
+            <div className="px-3 py-3 border-r border-gray-200 text-xs font-medium text-slate-500 uppercase tracking-wide">
+              Duty
+            </div>
+            {weekDays.map((day) => (
+              <div
+                key={day.toISOString()}
+                className={`px-2 py-2 text-center border-r border-gray-100 ${
+                  isToday(day) ? "bg-blue-50" : ""
+                }`}
+                data-testid={`week-header-${format(day, "yyyy-MM-dd")}`}
+              >
+                <div className="text-xs text-slate-500 uppercase">{format(day, "EEE")}</div>
+                <div className={`text-lg font-semibold ${isToday(day) ? "text-blue-600" : "text-slate-800"}`}>
+                  {format(day, "d")}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Unique Duties across the week */}
+          {(() => {
+            const uniqueDuties = new Map();
+            scheduleDuties.forEach((d) => {
+              if (!uniqueDuties.has(d.duty_id)) {
+                uniqueDuties.set(d.duty_id, d);
+              }
+            });
+            const dutyList = Array.from(uniqueDuties.values());
+
+            return (
+              <>
+                {dutyList.map((duty) => (
+                  <div
+                    key={duty.duty_id}
+                    className="grid grid-cols-8 border-b border-gray-100 group"
+                    data-testid={`week-duty-row-${duty.duty_id}`}
+                  >
+                    <div className="px-3 py-2.5 border-r border-gray-200 bg-white flex items-center justify-between">
+                      <span className="duty-row-label text-xs font-medium text-slate-700 truncate" title={duty.duty_name}>
+                        {duty.duty_code}
+                      </span>
+                    </div>
+                    {weekDays.map((day) => {
+                      const dateStr = format(day, "yyyy-MM-dd");
+                      const dayDuty = scheduleDuties.find(
+                        (d) => d.duty_id === duty.duty_id && d.date === dateStr
+                      );
+                      const dayAssignments = assignments.filter(
+                        (a) => a.schedule_duty_id === dayDuty?.id
+                      );
+
+                      return (
+                        <div
+                          key={day.toISOString()}
+                          className={`border-r border-gray-50 min-h-[60px] p-1 cursor-pointer transition-colors ${
+                            isToday(day) ? "bg-blue-50/30" : "bg-white hover:bg-slate-50"
+                          }`}
+                          onClick={() => dayDuty && onCellClick(dayDuty, "0800")}
+                          data-testid={`week-cell-${duty.duty_id}-${dateStr}`}
+                        >
+                          {dayAssignments.slice(0, 2).map((a) => (
+                            <div
+                              key={a.id}
+                              className="text-[10px] bg-blue-100 text-blue-700 px-1 py-0.5 rounded mb-0.5 truncate"
+                              title={`${a.personnel_name} ${a.start_time}-${a.end_time}`}
+                            >
+                              {a.personnel_callsign}
+                            </div>
+                          ))}
+                          {dayAssignments.length > 2 && (
+                            <div className="text-[9px] text-slate-400 px-1">
+                              +{dayAssignments.length - 2} more
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+
+                {/* Add Duty Row */}
+                <div className="grid grid-cols-8 border-b border-gray-100">
+                  <div className="px-3 py-2.5 border-r border-gray-200 bg-white">
+                    <AddDutyDropdown
+                      selectedDate={selectedDate}
+                      onDutyAdded={onDutyAdded}
+                    />
+                  </div>
+                  {weekDays.map((day) => (
+                    <div
+                      key={day.toISOString()}
+                      className="border-r border-gray-50 min-h-[44px] bg-white"
+                    />
+                  ))}
+                </div>
+              </>
+            );
+          })()}
+        </div>
+      </div>
+    );
+  }
+
+  // Render Monthly View
+  if (activeView === "Month") {
+    const monthDays = getMonthDays();
+    const weekDayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+    return (
+      <div className="calendar-scroll overflow-auto p-4" data-testid="calendar-grid-month">
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          {/* Month Header */}
+          <div className="grid grid-cols-7 border-b border-gray-200 bg-slate-50">
+            {weekDayNames.map((day) => (
+              <div
+                key={day}
+                className="px-2 py-2 text-center text-xs font-medium text-slate-500 uppercase tracking-wide border-r border-gray-100 last:border-r-0"
+              >
+                {day}
+              </div>
+            ))}
+          </div>
+
+          {/* Calendar Grid */}
+          <div className="grid grid-cols-7">
+            {monthDays.map((day, idx) => {
+              const dateStr = format(day, "yyyy-MM-dd");
+              const dayDuties = getDutiesForDate(day);
+              const dayAssignments = getAssignmentsForDate(day);
+              const isCurrentMonth = isSameMonth(day, baseDate);
+              const isSelectedDay = isSameDay(day, new Date(selectedDate));
+
+              return (
+                <div
+                  key={idx}
+                  className={`min-h-[100px] border-r border-b border-gray-100 p-1 transition-colors ${
+                    !isCurrentMonth ? "bg-slate-50/50" : "bg-white"
+                  } ${isToday(day) ? "bg-blue-50/50" : ""} ${
+                    isSelectedDay ? "ring-2 ring-blue-500 ring-inset" : ""
+                  } hover:bg-slate-50 cursor-pointer`}
+                  onClick={() => {
+                    if (dayDuties.length > 0) {
+                      onCellClick(dayDuties[0], "0800");
+                    }
+                  }}
+                  data-testid={`month-cell-${dateStr}`}
+                >
+                  <div className={`text-sm font-medium mb-1 ${
+                    !isCurrentMonth ? "text-slate-300" : isToday(day) ? "text-blue-600" : "text-slate-700"
+                  }`}>
+                    {format(day, "d")}
+                  </div>
+                  
+                  {/* Duties & Assignments */}
+                  <div className="space-y-0.5">
+                    {dayDuties.slice(0, 3).map((duty) => {
+                      const dutyAssignments = dayAssignments.filter(
+                        (a) => a.schedule_duty_id === duty.id
+                      );
+                      return (
+                        <div
+                          key={duty.id}
+                          className="text-[9px] px-1 py-0.5 rounded truncate bg-blue-100 text-blue-700"
+                          title={`${duty.duty_code}: ${dutyAssignments.length} assigned`}
+                        >
+                          {duty.duty_code} ({dutyAssignments.length})
+                        </div>
+                      );
+                    })}
+                    {dayDuties.length > 3 && (
+                      <div className="text-[9px] text-slate-400 px-1">
+                        +{dayDuties.length - 3} more
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Add Duty for current date */}
+        <div className="mt-4">
+          <AddDutyDropdown
+            selectedDate={selectedDate}
+            onDutyAdded={onDutyAdded}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+// Extracted Day View Component
+function DayView({
+  scheduleDuties,
+  selectedDate,
+  onDutyAdded,
+  onRemoveDuty,
+  onCellClick,
+  assignments,
+  selectedSlot,
+  onAssignmentUpdated,
+  reassignBlock,
+  setReassignBlock,
+}) {
 
   return (
     <div className="calendar-scroll overflow-x-auto" data-testid="calendar-grid">
