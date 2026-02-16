@@ -5,6 +5,7 @@ import Header from "@/components/layout/Header";
 import CalendarControls from "@/components/calendar/CalendarControls";
 import CalendarGrid from "@/components/calendar/CalendarGrid";
 import DutySlotPanel from "@/components/duties/DutySlotPanel";
+import GroupDutyPanel from "@/components/duties/GroupDutyPanel";
 import { format } from "date-fns";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -53,7 +54,7 @@ export default function SchedulerPage() {
     try {
       await axios.delete(`${API}/schedule-duties/${dutyId}`);
       fetchScheduleDuties();
-      // Close panel if this duty was selected
+      fetchAssignments();
       if (selectedDuty?.id === dutyId) {
         setPanelOpen(false);
         setSelectedDuty(null);
@@ -80,6 +81,8 @@ export default function SchedulerPage() {
     fetchAssignments();
   };
 
+  const isGroupDuty = selectedDuty?.duty_type === "group";
+
   return (
     <div className="flex h-screen overflow-hidden" data-testid="scheduler-page">
       <Sidebar />
@@ -101,9 +104,10 @@ export default function SchedulerPage() {
               onCellClick={handleCellClick}
               assignments={assignments}
               selectedSlot={selectedSlot}
+              onAssignmentUpdated={fetchAssignments}
             />
           </div>
-          {panelOpen && (
+          {panelOpen && !isGroupDuty && (
             <DutySlotPanel
               open={panelOpen}
               onClose={handlePanelClose}
@@ -111,6 +115,17 @@ export default function SchedulerPage() {
               selectedDate={dateStr}
               clickedTimeSlot={selectedSlot?.timeSlot}
               onAssignmentCreated={handleAssignmentCreated}
+            />
+          )}
+          {panelOpen && isGroupDuty && (
+            <GroupDutyPanel
+              open={panelOpen}
+              onClose={handlePanelClose}
+              duty={selectedDuty}
+              selectedDate={dateStr}
+              clickedTimeSlot={selectedSlot?.timeSlot}
+              onAssignmentCreated={handleAssignmentCreated}
+              assignments={assignments}
             />
           )}
         </div>

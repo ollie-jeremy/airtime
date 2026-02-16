@@ -7,9 +7,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import AddSingleDutyModal from "@/components/duties/AddSingleDutyModal";
+import NewDutyGroupModal from "@/components/duties/NewDutyGroupModal";
 
 export default function AddDutyDropdown({ selectedDate, onDutyAdded }) {
   const [showSingleDutyModal, setShowSingleDutyModal] = useState(false);
+  const [showGroupModal, setShowGroupModal] = useState(false);
 
   return (
     <>
@@ -35,12 +37,13 @@ export default function AddDutyDropdown({ selectedDate, onDutyAdded }) {
             </div>
           </DropdownMenuItem>
           <DropdownMenuItem
-            disabled
+            onClick={() => setShowGroupModal(true)}
             data-testid="add-group-duty-option"
+            className="cursor-pointer"
           >
             <div>
-              <div className="font-medium text-sm text-slate-400">Group of duties</div>
-              <div className="text-xs text-slate-300">Coming soon</div>
+              <div className="font-medium text-sm">Group of duties</div>
+              <div className="text-xs text-slate-400">Create a duty group with multiple roles</div>
             </div>
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -51,6 +54,13 @@ export default function AddDutyDropdown({ selectedDate, onDutyAdded }) {
         onOpenChange={setShowSingleDutyModal}
         selectedDate={selectedDate}
         onDutyAdded={onDutyAdded}
+      />
+
+      <NewDutyGroupModal
+        open={showGroupModal}
+        onOpenChange={setShowGroupModal}
+        selectedDate={selectedDate}
+        onGroupCreated={onDutyAdded}
       />
     </>
   );

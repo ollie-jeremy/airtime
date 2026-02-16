@@ -41,6 +41,7 @@ class ScheduleDuty(BaseModel):
     duty_id: str
     duty_name: str
     duty_code: str
+    duty_type: str = "single"  # "single" or "group"
     qualifications: List[str] = []
     date: str
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
@@ -49,6 +50,7 @@ class ScheduleDutyCreate(BaseModel):
     duty_id: str
     duty_name: str
     duty_code: str
+    duty_type: str = "single"
     qualifications: List[str] = []
     date: str
 
@@ -62,12 +64,6 @@ class Personnel(BaseModel):
     available: bool = True
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
-class PersonnelCreate(BaseModel):
-    callsign: str
-    name: str
-    qualifications: List[str] = []
-    available: bool = True
-
 class Assignment(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -80,6 +76,8 @@ class Assignment(BaseModel):
     date: str
     start_time: str
     end_time: str
+    sub_duty_name: str = ""  # For group duties: "Pilot", "Tower", etc.
+    slot_index: int = 0       # For group duties: slot number within sub-duty
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 class AssignmentCreate(BaseModel):
@@ -92,6 +90,28 @@ class AssignmentCreate(BaseModel):
     date: str
     start_time: str
     end_time: str
+    sub_duty_name: str = ""
+    slot_index: int = 0
+
+class AssignmentUpdate(BaseModel):
+    personnel_id: str
+    personnel_name: str
+    personnel_callsign: str
+
+class DutyConfigItem(BaseModel):
+    name: str
+    count: int
+
+class DutyGroupConfig(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    schedule_duty_id: str
+    duties: List[DutyConfigItem] = []
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class DutyGroupConfigCreate(BaseModel):
+    schedule_duty_id: str
+    duties: List[DutyConfigItem] = []
 
 # --- Seed Data ---
 
@@ -169,6 +189,9 @@ async def remove_schedule_duty(duty_id: str):
     result = await db.schedule_duties.delete_one({"id": duty_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Schedule duty not found")
+    # Also delete related configs and assignments
+    await db.duty_group_configs.delete_many({"schedule_duty_id": duty_id})
+    await db.assignments.delete_many({"schedule_duty_id": duty_id})
     return {"deleted": True}
 
 # --- Personnel Routes ---
@@ -198,12 +221,38 @@ async def create_assignment(input: AssignmentCreate):
     assignment = Assignment(**input.model_dump())
     doc = assignment.model_dump()
     await db.assignments.insert_one(doc)
-    # Increment personnel total_duties
     await db.personnel.update_one(
         {"id": input.personnel_id},
         {"$inc": {"total_duties": 1}}
     )
     return assignment
+
+@api_router.put("/assignments/{assignment_id}", response_model=Assignment)
+async def update_assignment(assignment_id: str, input: AssignmentUpdate):
+    old = await db.assignments.find_one({"id": assignment_id}, {"_id": 0})
+    if not old:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    # Decrement old personnel
+    await db.personnel.update_one(
+        {"id": old["personnel_id"]},
+        {"$inc": {"total_duties": -1}}
+    )
+    # Update assignment
+    await db.assignments.update_one(
+        {"id": assignment_id},
+        {"$set": {
+            "personnel_id": input.personnel_id,
+            "personnel_name": input.personnel_name,
+            "personnel_callsign": input.personnel_callsign,
+        }}
+    )
+    # Increment new personnel
+    await db.personnel.update_one(
+        {"id": input.personnel_id},
+        {"$inc": {"total_duties": 1}}
+    )
+    updated = await db.assignments.find_one({"id": assignment_id}, {"_id": 0})
+    return updated
 
 @api_router.delete("/assignments/{assignment_id}")
 async def delete_assignment(assignment_id: str):
@@ -211,12 +260,41 @@ async def delete_assignment(assignment_id: str):
     if not assignment:
         raise HTTPException(status_code=404, detail="Assignment not found")
     await db.assignments.delete_one({"id": assignment_id})
-    # Decrement personnel total_duties
     await db.personnel.update_one(
         {"id": assignment["personnel_id"]},
         {"$inc": {"total_duties": -1}}
     )
     return {"deleted": True}
+
+# --- Duty Group Config Routes ---
+
+@api_router.get("/duty-group-configs/{schedule_duty_id}", response_model=Optional[DutyGroupConfig])
+async def get_duty_group_config(schedule_duty_id: str):
+    config = await db.duty_group_configs.find_one(
+        {"schedule_duty_id": schedule_duty_id}, {"_id": 0}
+    )
+    return config
+
+@api_router.post("/duty-group-configs", response_model=DutyGroupConfig)
+async def save_duty_group_config(input: DutyGroupConfigCreate):
+    # Upsert: replace existing config for this schedule duty
+    existing = await db.duty_group_configs.find_one(
+        {"schedule_duty_id": input.schedule_duty_id}, {"_id": 0}
+    )
+    if existing:
+        await db.duty_group_configs.update_one(
+            {"schedule_duty_id": input.schedule_duty_id},
+            {"$set": {"duties": [d.model_dump() for d in input.duties]}}
+        )
+        updated = await db.duty_group_configs.find_one(
+            {"schedule_duty_id": input.schedule_duty_id}, {"_id": 0}
+        )
+        return updated
+    else:
+        config = DutyGroupConfig(**input.model_dump())
+        doc = config.model_dump()
+        await db.duty_group_configs.insert_one(doc)
+        return config
 
 # --- App Setup ---
 
