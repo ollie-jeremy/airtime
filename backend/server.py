@@ -329,6 +329,120 @@ async def save_duty_group_config(input: DutyGroupConfigCreate):
         await db.duty_group_configs.insert_one(doc)
         return config
 
+# --- Recurring Assignment Route ---
+
+def calculate_recurrence_dates(start_date: str, recurrence: RecurrencePattern) -> List[str]:
+    """Calculate all dates for a recurring assignment"""
+    dates = []
+    current = datetime.strptime(start_date, "%Y-%m-%d")
+    max_iterations = 365  # Safety limit
+    count = 0
+    
+    while count < max_iterations:
+        dates.append(current.strftime("%Y-%m-%d"))
+        count += 1
+        
+        # Check end conditions
+        if recurrence.end_type == "occurrences" and recurrence.occurrences:
+            if len(dates) >= recurrence.occurrences:
+                break
+        elif recurrence.end_type == "date" and recurrence.end_date:
+            end = datetime.strptime(recurrence.end_date, "%Y-%m-%d")
+            if current >= end:
+                break
+        elif recurrence.end_type == "never":
+            # For "never", limit to 90 days ahead
+            if len(dates) >= 90:
+                break
+        
+        # Calculate next date based on frequency
+        if recurrence.frequency == "daily":
+            current += timedelta(days=recurrence.interval)
+        elif recurrence.frequency == "weekly":
+            current += timedelta(weeks=recurrence.interval)
+        elif recurrence.frequency == "biweekly":
+            current += timedelta(weeks=2)
+        elif recurrence.frequency == "monthly":
+            current += relativedelta(months=recurrence.interval)
+        elif recurrence.frequency == "custom":
+            # Find next day in custom_days
+            if not recurrence.custom_days:
+                break
+            found_next = False
+            for _ in range(7):
+                current += timedelta(days=1)
+                if current.weekday() in recurrence.custom_days:
+                    found_next = True
+                    break
+            if not found_next:
+                break
+        else:
+            break
+    
+    return dates
+
+@api_router.post("/recurring-assignments")
+async def create_recurring_assignments(input: RecurringAssignmentCreate):
+    """Create multiple assignments based on recurrence pattern"""
+    dates = calculate_recurrence_dates(input.start_date, input.recurrence)
+    created_assignments = []
+    
+    for date in dates:
+        # Check for existing schedule duty on this date, create if needed
+        existing_duty = await db.schedule_duties.find_one({
+            "duty_id": input.duty_code,
+            "date": date
+        }, {"_id": 0})
+        
+        schedule_duty_id = input.schedule_duty_id
+        if not existing_duty and date != input.start_date:
+            # Find original duty to copy
+            original_duty = await db.schedule_duties.find_one({
+                "id": input.schedule_duty_id
+            }, {"_id": 0})
+            if original_duty:
+                new_duty = ScheduleDuty(
+                    duty_id=original_duty["duty_id"],
+                    duty_name=original_duty["duty_name"],
+                    duty_code=original_duty["duty_code"],
+                    duty_type=original_duty["duty_type"],
+                    qualifications=original_duty.get("qualifications", []),
+                    date=date
+                )
+                doc = new_duty.model_dump()
+                await db.schedule_duties.insert_one(doc)
+                schedule_duty_id = new_duty.id
+        
+        # Create assignment
+        assignment = Assignment(
+            schedule_duty_id=schedule_duty_id,
+            duty_code=input.duty_code,
+            duty_name=input.duty_name,
+            personnel_id=input.personnel_id,
+            personnel_name=input.personnel_name,
+            personnel_callsign=input.personnel_callsign,
+            date=date,
+            start_time=input.start_time,
+            end_time=input.end_time,
+            sub_duty_name=input.sub_duty_name,
+            slot_index=input.slot_index
+        )
+        doc = assignment.model_dump()
+        await db.assignments.insert_one(doc)
+        created_assignments.append(assignment)
+    
+    # Update personnel total duties
+    await db.personnel.update_one(
+        {"id": input.personnel_id},
+        {"$inc": {"total_duties": len(created_assignments)}}
+    )
+    
+    return {
+        "created_count": len(created_assignments),
+        "dates": dates,
+        "assignments": [a.model_dump() for a in created_assignments]
+    }
+
 # --- App Setup ---
 
 app.include_router(api_router)
