@@ -1,7 +1,7 @@
 # OpsScheduler - Scheduling Calendar
 
 ## Problem Statement
-Build a scheduling calendar in daily view that is time-based. Allow users to create single duties and group duties, assign qualified personnel to time slots, and reassign personnel instantly.
+Build a scheduling calendar in daily view that is time-based. Allow users to create single duties and group duties, assign qualified personnel to time slots, reassign personnel instantly, toggle between calendar views (Day/Week/Month), and create recurring duties.
 
 ## Architecture
 - **Frontend**: React + Shadcn UI + Tailwind CSS
@@ -27,13 +27,49 @@ Build a scheduling calendar in daily view that is time-based. Allow users to cre
 - **Personnel slots**: After config, side panel shows each duty with N personnel dropdowns
 - PersonnelDropdown component for searchable personnel selection
 
-## Prioritized Backlog
-### P1
-- [ ] Drag-and-drop duty blocks on time grid
-- [ ] Week/Month view implementation
-- [ ] Recur Duty functionality
+### Phase 4 (Feb 16, 2026)
+- **Calendar View Toggle**: Day/Week/Month view buttons
+  - Day view: Hourly time slots (0600-1800) with duty rows
+  - Week view: 7-day grid (Mon-Sun) showing duty assignments per day
+  - Month view: Full calendar grid with duties and assignment counts
+- **Date Navigation**: Prev/Next buttons adapt to view (day/week/month increments)
+- **Recurring Duties Feature**:
+  - "Recur Duty" button in DutySlotPanel
+  - RecurDutyModal with frequency options (Daily, Weekly, Bi-weekly, Monthly, Custom)
+  - Custom frequency allows selecting specific days (Mon-Sun)
+  - End conditions: Never (90 days), After X occurrences, On specific date
+  - Backend creates multiple schedule duties and assignments based on recurrence pattern
 
-### P2
+## API Endpoints
+- `GET /api/duties`: Fetch all duty definitions (with optional search)
+- `POST /api/duties`: Create a new duty definition
+- `GET /api/schedule-duties`: Fetch scheduled duties (supports `date` or `start_date` + `end_date`)
+- `POST /api/schedule-duties`: Add a single or group duty to the schedule
+- `DELETE /api/schedule-duties/{duty_id}`: Remove a scheduled duty
+- `GET /api/personnel`: Fetch all personnel (with optional search/availability filter)
+- `GET /api/assignments`: Fetch assignments (supports `date` or `start_date` + `end_date`)
+- `POST /api/assignments`: Create a single assignment
+- `PUT /api/assignments/{assignment_id}`: Update an existing assignment (reassignment)
+- `DELETE /api/assignments/{assignment_id}`: Remove an assignment
+- `GET /api/duty-group-configs/{schedule_duty_id}`: Fetch group duty configuration
+- `POST /api/duty-group-configs`: Save/update group duty configuration
+- `POST /api/recurring-assignments`: Create multiple assignments based on recurrence pattern
+
+## Key Components
+- `/app/frontend/src/pages/SchedulerPage.js` - Main scheduler page
+- `/app/frontend/src/components/calendar/CalendarControls.js` - Date nav and view toggle
+- `/app/frontend/src/components/calendar/CalendarGrid.js` - Day/Week/Month grid rendering
+- `/app/frontend/src/components/duties/DutySlotPanel.js` - Personnel assignment panel
+- `/app/frontend/src/components/duties/GroupDutyPanel.js` - Group duty configuration panel
+- `/app/frontend/src/components/duties/RecurDutyModal.js` - Recurrence configuration modal
+- `/app/backend/server.py` - FastAPI backend with all endpoints
+
+## Prioritized Backlog
+
+### P1 (Next Up)
+- [ ] Drag-and-drop duty blocks on time grid
+
+### P2 (Future)
 - [ ] Auto-Assign functionality
 - [ ] Validate & Publish workflows
 - [ ] User authentication
