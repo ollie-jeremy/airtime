@@ -413,6 +413,35 @@ class SchedulerAPITester:
                 
         return success, response if success else []
 
+    def test_update_assignment(self, assignment, new_personnel):
+        """Test updating/reassigning personnel for an assignment"""
+        if not assignment or 'id' not in assignment:
+            print("❌ No valid assignment to update")
+            return False
+            
+        if not new_personnel:
+            print("❌ No personnel to reassign to")
+            return False
+            
+        update_data = {
+            "personnel_id": new_personnel['id'],
+            "personnel_name": new_personnel['name'],
+            "personnel_callsign": new_personnel['callsign']
+        }
+        
+        success, response = self.run_test(
+            f"Update Assignment (Reassign to {new_personnel['callsign']})",
+            "PUT",
+            f"assignments/{assignment['id']}",
+            200,
+            data=update_data
+        )
+        
+        if success:
+            print(f"   Updated assignment: {assignment['id']} -> {new_personnel['callsign']}")
+            
+        return success, response if success else None
+
     def test_delete_assignment(self, assignment):
         """Test deleting an assignment"""
         if not assignment or 'id' not in assignment:
