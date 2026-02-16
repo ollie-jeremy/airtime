@@ -78,8 +78,18 @@ export default function DutySlotPanel({
       setSearchQuery("");
       setSelectedPersonnel([]);
       setAllDay(false);
+      setRecurrence(null);
     }
   }, [open]);
+
+  const handleRecurrenceConfirm = (recurrencePattern) => {
+    setRecurrence(recurrencePattern);
+    setRecurModalOpen(false);
+  };
+
+  const clearRecurrence = () => {
+    setRecurrence(null);
+  };
 
   const togglePersonnel = (person) => {
     setSelectedPersonnel((prev) => {
