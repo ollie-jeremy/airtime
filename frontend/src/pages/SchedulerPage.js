@@ -129,6 +129,8 @@ export default function SchedulerPage() {
               assignments={assignments}
               selectedSlot={selectedSlot}
               onAssignmentUpdated={fetchAssignments}
+              activeView={activeView}
+              baseDate={selectedDate}
             />
           </div>
           {panelOpen && !isGroupDuty && (
