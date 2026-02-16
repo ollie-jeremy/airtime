@@ -404,10 +404,19 @@ export default function DutySlotPanel({
           className="w-full bg-slate-800 hover:bg-slate-900 text-white disabled:bg-slate-300"
           data-testid="add-personnels-btn"
         >
-          Add Personnels{selectedPersonnel.length > 0 ? ` (${selectedPersonnel.length})` : ""}
+          {recurrence ? "Create Recurring Duty" : "Add Personnels"}
+          {selectedPersonnel.length > 0 ? ` (${selectedPersonnel.length})` : ""}
         </Button>
         <div className="h-8" />
       </div>
+
+      {/* Recur Duty Modal */}
+      <RecurDutyModal
+        open={recurModalOpen}
+        onClose={() => setRecurModalOpen(false)}
+        onConfirm={handleRecurrenceConfirm}
+        dutyName={`${duty.duty_code} ${duty.duty_name.split(" - ")[1] || duty.duty_name}`}
+      />
     </div>
   );
 }
