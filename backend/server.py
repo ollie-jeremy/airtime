@@ -405,7 +405,7 @@ async def create_recurring_assignments(input: RecurringAssignmentCreate):
                     duty_id=original_duty["duty_id"],
                     duty_name=original_duty["duty_name"],
                     duty_code=original_duty["duty_code"],
-                    duty_type=original_duty["duty_type"],
+                    duty_type=original_duty.get("duty_type", "single"),
                     qualifications=original_duty.get("qualifications", []),
                     date=date
                 )
