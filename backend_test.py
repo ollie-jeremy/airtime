@@ -684,11 +684,36 @@ def main():
         if assignment_created:
             assignment_get_success, assignments_list = tester.test_get_assignments_with_data()
             
-            # Test 14: Delete assignment
+            # Test 14: Update/reassign assignment (personnel reassignment)
+            if assignment_get_success and assignments_list and len(all_personnel) > 1:
+                # Use a different person for reassignment
+                different_person = next((p for p in all_personnel if p['id'] != assignment_created['personnel_id']), None)
+                if different_person:
+                    tester.test_update_assignment(assignments_list[0], different_person)
+            
+            # Test 15: Delete assignment
             if assignment_get_success and assignments_list:
                 tester.test_delete_assignment(assignments_list[0])
         
-        # Test 15: Remove scheduled duty
+        # Test 16: Create group schedule duty
+        group_success, group_duty = tester.test_create_group_schedule_duty()
+        
+        if group_success:
+            # Test 17: Get group config (should be empty initially)
+            tester.test_get_duty_group_config(group_duty['id'])
+            
+            # Test 18: Save group duty config
+            config_success, config_response = tester.test_save_duty_group_config(group_duty['id'])
+            
+            if config_success:
+                # Test 19: Get group config (should return saved config)
+                tester.test_get_duty_group_config(group_duty['id'])
+                
+                # Test 20: Create group assignments
+                if personnel_success:
+                    tester.test_create_group_assignment(group_duty, all_personnel)
+        
+        # Test 21: Remove scheduled duty
         if schedule_success:
             tester.test_remove_schedule_duty()
         
