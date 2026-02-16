@@ -40,6 +40,8 @@ export default function DutySlotPanel({
   const [personnel, setPersonnel] = useState([]);
   const [selectedPersonnel, setSelectedPersonnel] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [recurModalOpen, setRecurModalOpen] = useState(false);
+  const [recurrence, setRecurrence] = useState(null);
 
   // Set time from clicked slot
   useEffect(() => {
