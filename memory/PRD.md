@@ -1,46 +1,34 @@
 # OpsScheduler - Scheduling Calendar
 
 ## Problem Statement
-Build a scheduling calendar in daily view that is time-based. Allow users to create single duties and assign qualified personnel to time slots via a side panel.
+Build a scheduling calendar in daily view that is time-based. Allow users to create single duties and group duties, assign qualified personnel to time slots, and reassign personnel instantly.
 
 ## Architecture
 - **Frontend**: React + Shadcn UI + Tailwind CSS
 - **Backend**: FastAPI + MongoDB (Motor async driver)
-- **Theme**: Light/neutral professional (Manrope + IBM Plex Sans)
-
-## User Personas
-- Military/operations planners managing duty scheduling and personnel assignment
-
-## Core Requirements
-- Daily view time-based calendar grid (0600-1800)
-- Add Duty flow: dropdown → Single Duty → modal with searchable duties → add to grid
-- Side panel for personnel assignment when clicking time slots
-- Pre-seeded sample duties and personnel with qualifications
+- **Theme**: Light/neutral professional (Manrope + IBM Plex Sans + JetBrains Mono)
 
 ## What's Been Implemented
 
 ### Phase 1 (Feb 13, 2026)
-- Full backend API: CRUD for duties, schedule-duties, personnel, assignments
-- 6 pre-seeded duties, 8 pre-seeded personnel (6 available, 2 unavailable)
-- Single duty creation flow end-to-end
-- Create New Duty flow
+- Daily view calendar grid (0600-1800), sidebar nav, header, date navigation
+- Single duty creation: Add Duty → Single Duty → searchable modal → add to grid
 
 ### Phase 2 (Feb 13, 2026)
-- Side panel (DutySlotPanel) opens on time cell click
-- Shows duty info, date, time range selectors (0600-1800), All Day toggle
-- Personnel section: search, Available/Unavailable tabs
-- Personnel cards with callsign, qualifications, total duties
-- Multi-select personnel + "Add Personnels" button
-- Assignment blocks appear in grid (duty code, time, person name)
-- Toast notifications via Sonner
+- Side panel on time cell click for personnel assignment
+- Available/Unavailable tabs, search, qualification badges
+- Assignment blocks in grid (duty code, time range, person name)
+
+### Phase 3 (Feb 16, 2026)
+- **Reassign personnel**: Click name on assignment block → popover → search/select new person → instant reassignment via PUT API
+- **Group of Duties**: Add Duty → Group of duties → name modal → group row in calendar
+- **Group side panel**: Click time cell → "Add Duties" panel with empty state
+- **Configure duties modal**: Table with duty name + personnel count + add/remove rows
+- **Personnel slots**: After config, side panel shows each duty with N personnel dropdowns
+- PersonnelDropdown component for searchable personnel selection
 
 ## Prioritized Backlog
-### P0 (Done)
-- [x] Single duty creation flow
-- [x] Side panel with personnel assignment
-
 ### P1
-- [ ] Group of duties flow
 - [ ] Drag-and-drop duty blocks on time grid
 - [ ] Week/Month view implementation
 - [ ] Recur Duty functionality
