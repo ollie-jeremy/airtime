@@ -173,8 +173,13 @@ async def create_duty(input: DutyDefinitionCreate):
     return duty
 
 @api_router.get("/schedule-duties", response_model=List[ScheduleDuty])
-async def get_schedule_duties(date: str):
-    duties = await db.schedule_duties.find({"date": date}, {"_id": 0}).to_list(100)
+async def get_schedule_duties(date: Optional[str] = None, start_date: Optional[str] = None, end_date: Optional[str] = None):
+    query = {}
+    if date:
+        query["date"] = date
+    elif start_date and end_date:
+        query["date"] = {"$gte": start_date, "$lte": end_date}
+    duties = await db.schedule_duties.find(query, {"_id": 0}).to_list(500)
     return duties
 
 @api_router.post("/schedule-duties", response_model=ScheduleDuty)
@@ -212,8 +217,13 @@ async def get_personnel(search: Optional[str] = None, available: Optional[bool] 
 # --- Assignment Routes ---
 
 @api_router.get("/assignments", response_model=List[Assignment])
-async def get_assignments(date: str):
-    assignments = await db.assignments.find({"date": date}, {"_id": 0}).to_list(100)
+async def get_assignments(date: Optional[str] = None, start_date: Optional[str] = None, end_date: Optional[str] = None):
+    query = {}
+    if date:
+        query["date"] = date
+    elif start_date and end_date:
+        query["date"] = {"$gte": start_date, "$lte": end_date}
+    assignments = await db.assignments.find(query, {"_id": 0}).to_list(500)
     return assignments
 
 @api_router.post("/assignments", response_model=Assignment)
