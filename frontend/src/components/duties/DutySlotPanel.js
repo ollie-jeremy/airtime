@@ -105,22 +105,42 @@ export default function DutySlotPanel({
     try {
       const effectiveStart = allDay ? "0600" : startTime;
       const effectiveEnd = allDay ? "1800" : endTime;
+      
       for (const person of selectedPersonnel) {
-        await axios.post(`${API}/assignments`, {
-          schedule_duty_id: duty.id,
-          duty_code: duty.duty_code,
-          duty_name: duty.duty_name,
-          personnel_id: person.id,
-          personnel_name: person.name,
-          personnel_callsign: person.callsign,
-          date: selectedDate,
-          start_time: effectiveStart,
-          end_time: effectiveEnd,
-        });
+        if (recurrence) {
+          // Create recurring assignments
+          await axios.post(`${API}/recurring-assignments`, {
+            schedule_duty_id: duty.id,
+            duty_code: duty.duty_code,
+            duty_name: duty.duty_name,
+            personnel_id: person.id,
+            personnel_name: person.name,
+            personnel_callsign: person.callsign,
+            start_date: selectedDate,
+            start_time: effectiveStart,
+            end_time: effectiveEnd,
+            recurrence: recurrence,
+          });
+        } else {
+          // Create single assignment
+          await axios.post(`${API}/assignments`, {
+            schedule_duty_id: duty.id,
+            duty_code: duty.duty_code,
+            duty_name: duty.duty_name,
+            personnel_id: person.id,
+            personnel_name: person.name,
+            personnel_callsign: person.callsign,
+            date: selectedDate,
+            start_time: effectiveStart,
+            end_time: effectiveEnd,
+          });
+        }
       }
-      toast.success(
-        `${selectedPersonnel.length} personnel assigned to ${duty.duty_code}`
-      );
+      
+      const msg = recurrence 
+        ? `Recurring duty created for ${selectedPersonnel.length} personnel`
+        : `${selectedPersonnel.length} personnel assigned to ${duty.duty_code}`;
+      toast.success(msg);
       onAssignmentCreated();
       onClose();
     } catch (e) {
