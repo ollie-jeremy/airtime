@@ -193,10 +193,44 @@ export default function DutySlotPanel({
               <CalIcon className="w-3.5 h-3.5 text-slate-400" />
               <span>{dateDisplay}</span>
             </div>
-            <span className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">
-              Recur Duty
-            </span>
+            <button
+              onClick={() => setRecurModalOpen(true)}
+              className={`flex items-center gap-1 text-[11px] uppercase tracking-wider font-semibold transition-colors ${
+                recurrence 
+                  ? "text-blue-600 hover:text-blue-700" 
+                  : "text-slate-400 hover:text-slate-600"
+              }`}
+              data-testid="recur-duty-btn"
+            >
+              <Repeat className="w-3 h-3" />
+              {recurrence ? "Recurring" : "Recur Duty"}
+            </button>
           </div>
+
+          {/* Recurrence Info Display */}
+          {recurrence && (
+            <div className="flex items-center justify-between p-2 bg-blue-50 rounded border border-blue-100">
+              <div className="text-xs text-blue-700">
+                <span className="font-medium capitalize">{recurrence.frequency}</span>
+                {recurrence.end_type === "occurrences" && (
+                  <span> · {recurrence.occurrences} times</span>
+                )}
+                {recurrence.end_type === "date" && recurrence.end_date && (
+                  <span> · until {recurrence.end_date}</span>
+                )}
+                {recurrence.end_type === "never" && (
+                  <span> · up to 90 days</span>
+                )}
+              </div>
+              <button
+                onClick={clearRecurrence}
+                className="p-0.5 hover:bg-blue-100 rounded transition-colors"
+                data-testid="clear-recurrence-btn"
+              >
+                <X className="w-3 h-3 text-blue-500" />
+              </button>
+            </div>
+          )}
 
           <div className="flex items-center gap-2">
             <Clock className="w-3.5 h-3.5 text-slate-400" />
