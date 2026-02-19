@@ -36,7 +36,6 @@ export default function GroupDutyPanel({
   const [allDay, setAllDay] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [config, setConfig] = useState(null);
-  const [location, setLocation] = useState("");
   const [loading, setLoading] = useState(false);
 
   // Slot assignments: { "Pilot-0": { personnelId, name, callsign }, ... }
