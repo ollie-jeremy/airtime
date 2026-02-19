@@ -40,6 +40,18 @@ Build a scheduling calendar in daily view that is time-based. Allow users to cre
   - End conditions: Never (90 days), After X occurrences, On specific date
   - Backend creates multiple schedule duties and assignments based on recurrence pattern
 
+### Phase 5 (Feb 19, 2026)
+- **Single Duty Panel UI Update**:
+  - Duty name displayed in card style (e.g., "Guard Duty - Main Gate")
+  - Personnel selection via dropdown with chevron icon
+  - Search field inside dropdown
+  - Available/Unavailable tabs for filtering personnel
+  - Personnel list shows callsign, duties count, qualification badges
+- **Group Duty Panel UI Update**:
+  - Removed Location field (MapPin icon and input)
+  - PersonnelDropdown now includes Available/Unavailable tabs
+  - Consistent dropdown styling across both panel types
+
 ## API Endpoints
 - `GET /api/duties`: Fetch all duty definitions (with optional search)
 - `POST /api/duties`: Create a new duty definition
