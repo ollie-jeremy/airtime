@@ -313,23 +313,6 @@ export default function GroupDutyPanel({
             </div>
           )}
         </div>
-
-        {/* Location */}
-        {hasConfig && (
-          <div className="px-5 py-3 border-t border-gray-200">
-            <div className="flex items-center gap-2 mb-2">
-              <MapPin className="w-3.5 h-3.5 text-slate-400" />
-              <span className="text-sm text-slate-500">Location</span>
-            </div>
-            <Input
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="Location"
-              className="h-8 text-sm border-gray-200"
-              data-testid="group-location-input"
-            />
-          </div>
-        )}
       </div>
 
       {/* Footer */}
