@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   X,
@@ -10,9 +9,8 @@ import {
   Clock,
   ArrowRight,
   Search,
-  SlidersHorizontal,
   User,
-  Users,
+  ChevronDown,
   Repeat,
 } from "lucide-react";
 import RecurDutyModal from "./RecurDutyModal";
@@ -38,7 +36,8 @@ export default function DutySlotPanel({
   const [activeTab, setActiveTab] = useState("available");
   const [searchQuery, setSearchQuery] = useState("");
   const [personnel, setPersonnel] = useState([]);
-  const [selectedPersonnel, setSelectedPersonnel] = useState([]);
+  const [selectedPerson, setSelectedPerson] = useState(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [recurModalOpen, setRecurModalOpen] = useState(false);
   const [recurrence, setRecurrence] = useState(null);
@@ -56,7 +55,7 @@ export default function DutySlotPanel({
 
   // Fetch personnel
   useEffect(() => {
-    if (!open) return;
+    if (!open || !dropdownOpen) return;
     const fetchPersonnel = async () => {
       try {
         const params = {};
@@ -70,13 +69,14 @@ export default function DutySlotPanel({
       }
     };
     fetchPersonnel();
-  }, [open, searchQuery, activeTab]);
+  }, [open, dropdownOpen, searchQuery, activeTab]);
 
   // Reset on close
   useEffect(() => {
     if (!open) {
       setSearchQuery("");
-      setSelectedPersonnel([]);
+      setSelectedPerson(null);
+      setDropdownOpen(false);
       setAllDay(false);
       setRecurrence(null);
     }
@@ -91,56 +91,50 @@ export default function DutySlotPanel({
     setRecurrence(null);
   };
 
-  const togglePersonnel = (person) => {
-    setSelectedPersonnel((prev) => {
-      const exists = prev.find((p) => p.id === person.id);
-      if (exists) return prev.filter((p) => p.id !== person.id);
-      return [...prev, person];
-    });
+  const handleSelectPerson = (person) => {
+    setSelectedPerson(person);
+    setDropdownOpen(false);
+    setSearchQuery("");
   };
 
-  const handleAddPersonnels = async () => {
-    if (selectedPersonnel.length === 0) return;
+  const handleAddPersonnel = async () => {
+    if (!selectedPerson) return;
     setLoading(true);
     try {
       const effectiveStart = allDay ? "0600" : startTime;
       const effectiveEnd = allDay ? "1800" : endTime;
       
-      for (const person of selectedPersonnel) {
-        if (recurrence) {
-          // Create recurring assignments
-          await axios.post(`${API}/recurring-assignments`, {
-            schedule_duty_id: duty.id,
-            duty_code: duty.duty_code,
-            duty_name: duty.duty_name,
-            personnel_id: person.id,
-            personnel_name: person.name,
-            personnel_callsign: person.callsign,
-            start_date: selectedDate,
-            start_time: effectiveStart,
-            end_time: effectiveEnd,
-            recurrence: recurrence,
-          });
-        } else {
-          // Create single assignment
-          await axios.post(`${API}/assignments`, {
-            schedule_duty_id: duty.id,
-            duty_code: duty.duty_code,
-            duty_name: duty.duty_name,
-            personnel_id: person.id,
-            personnel_name: person.name,
-            personnel_callsign: person.callsign,
-            date: selectedDate,
-            start_time: effectiveStart,
-            end_time: effectiveEnd,
-          });
-        }
+      if (recurrence) {
+        // Create recurring assignments
+        await axios.post(`${API}/recurring-assignments`, {
+          schedule_duty_id: duty.id,
+          duty_code: duty.duty_code,
+          duty_name: duty.duty_name,
+          personnel_id: selectedPerson.id,
+          personnel_name: selectedPerson.name,
+          personnel_callsign: selectedPerson.callsign,
+          start_date: selectedDate,
+          start_time: effectiveStart,
+          end_time: effectiveEnd,
+          recurrence: recurrence,
+        });
+        toast.success(`Recurring duty created for ${selectedPerson.name}`);
+      } else {
+        // Create single assignment
+        await axios.post(`${API}/assignments`, {
+          schedule_duty_id: duty.id,
+          duty_code: duty.duty_code,
+          duty_name: duty.duty_name,
+          personnel_id: selectedPerson.id,
+          personnel_name: selectedPerson.name,
+          personnel_callsign: selectedPerson.callsign,
+          date: selectedDate,
+          start_time: effectiveStart,
+          end_time: effectiveEnd,
+        });
+        toast.success(`${selectedPerson.name} assigned to ${duty.duty_code}`);
       }
       
-      const msg = recurrence 
-        ? `Recurring duty created for ${selectedPersonnel.length} personnel`
-        : `${selectedPersonnel.length} personnel assigned to ${duty.duty_code}`;
-      toast.success(msg);
       onAssignmentCreated();
       onClose();
     } catch (e) {
@@ -162,6 +156,10 @@ export default function DutySlotPanel({
     year: "numeric",
   });
 
+  const dutyDisplayName = duty.duty_name.includes(" - ") 
+    ? duty.duty_name 
+    : `${duty.duty_code} - ${duty.duty_name.replace(duty.duty_code + " ", "")}`;
+
   return (
     <div
       className="w-[340px] border-l border-gray-200 bg-white h-full flex flex-col shrink-0 overflow-hidden"
@@ -173,7 +171,7 @@ export default function DutySlotPanel({
           <h2 className="text-base font-semibold font-[Manrope] text-slate-900">
             Add Duty
           </h2>
-          <p className="text-sm text-slate-500 mt-0.5">{duty.duty_code} {duty.duty_name.split(" - ")[1] || ""}</p>
+          <p className="text-sm text-slate-500 mt-0.5">{duty.duty_code}</p>
         </div>
         <button
           onClick={onClose}
@@ -276,136 +274,129 @@ export default function DutySlotPanel({
           </div>
         </div>
 
-        {/* Duties Section Header */}
-        <div className="px-5 py-3 border-b border-gray-200 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Users className="w-3.5 h-3.5 text-slate-400" />
-            <span className="text-sm font-medium text-slate-700">Duties</span>
-          </div>
-          <span className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">
-            Configure no. of personnels
-          </span>
-        </div>
+        {/* Duty Card */}
+        <div className="px-5 py-4 border-b border-gray-200">
+          <div className="border border-gray-200 rounded-lg p-4 space-y-4">
+            {/* Duty Name */}
+            <h3 className="text-base font-semibold text-slate-900">{dutyDisplayName}</h3>
 
-        {/* Duty Name */}
-        <div className="px-5 py-3 border-b border-gray-200">
-          <h3 className="text-sm font-semibold text-slate-900">{duty.duty_code} {duty.duty_name.split(" - ")[1] || duty.duty_name}</h3>
-        </div>
+            {/* Personnel Dropdown */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4 text-slate-400" />
+                <button
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  className={`flex-1 h-10 px-3 flex items-center justify-between border rounded-md text-sm transition-colors ${
+                    selectedPerson
+                      ? "border-gray-200 bg-white text-slate-700"
+                      : "border-gray-200 bg-white text-slate-400"
+                  }`}
+                  data-testid="personnel-dropdown-btn"
+                >
+                  <span className="truncate">{selectedPerson ? selectedPerson.name : "Personnel"}</span>
+                  <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
+                </button>
+              </div>
 
-        {/* Personnel Section */}
-        <div className="px-5 py-3 space-y-3">
-          {/* Personnel Label */}
-          <div className="flex items-center gap-2">
-            <User className="w-3.5 h-3.5 text-slate-400" />
-            <span className="text-sm font-medium text-slate-600">Personnel</span>
-          </div>
-
-          {/* Search + Filter */}
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-              <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search"
-                className="h-8 pl-8 text-sm border-gray-200"
-                data-testid="personnel-search-input"
-              />
-            </div>
-            <button
-              className="h-8 w-8 flex items-center justify-center border border-gray-200 rounded hover:bg-slate-50 transition-colors"
-              data-testid="personnel-filter-btn"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
-            </button>
-          </div>
-
-          {/* Available / Unavailable Tabs */}
-          <div className="flex border-b border-gray-200">
-            <button
-              onClick={() => setActiveTab("available")}
-              className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                activeTab === "available"
-                  ? "text-blue-600 border-b-2 border-blue-600"
-                  : "text-slate-400 hover:text-slate-600"
-              }`}
-              data-testid="tab-available"
-            >
-              Available
-            </button>
-            <button
-              onClick={() => setActiveTab("unavailable")}
-              className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                activeTab === "unavailable"
-                  ? "text-blue-600 border-b-2 border-blue-600"
-                  : "text-slate-400 hover:text-slate-600"
-              }`}
-              data-testid="tab-unavailable"
-            >
-              Unavailable
-            </button>
-          </div>
-
-          {/* Personnel List */}
-          <div className="space-y-0 border border-gray-200 rounded-md overflow-hidden" data-testid="personnel-list">
-            {personnel.length > 0 ? (
-              personnel.map((person) => {
-                const isSelected = selectedPersonnel.some((p) => p.id === person.id);
-                return (
-                  <button
-                    key={person.id}
-                    onClick={() => togglePersonnel(person)}
-                    className={`w-full px-3 py-2.5 text-left border-b border-gray-100 last:border-b-0 transition-colors ${
-                      isSelected ? "bg-blue-50" : "hover:bg-slate-50"
-                    }`}
-                    data-testid={`personnel-${person.id}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-slate-700">
-                        {person.callsign}
-                      </span>
-                      <span className="text-xs text-slate-400">
-                        Total Duties: {person.total_duties}
-                      </span>
+              {/* Dropdown Content */}
+              {dropdownOpen && (
+                <div className="border border-gray-200 rounded-md shadow-lg bg-white overflow-hidden">
+                  {/* Search */}
+                  <div className="p-2 border-b border-gray-100">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                      <input
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search"
+                        className="w-full h-8 pl-8 pr-2 text-sm border border-gray-200 rounded bg-white outline-none focus:border-blue-400"
+                        autoFocus
+                        data-testid="personnel-search-input"
+                      />
                     </div>
-                    <div className="flex items-center gap-1 mt-1">
-                      {person.qualifications.map((q) => (
-                        <Badge
-                          key={q}
-                          variant="secondary"
-                          className="text-[10px] px-1.5 py-0 h-5 bg-slate-100 text-slate-500 font-normal border-0"
+                  </div>
+
+                  {/* Available / Unavailable Tabs */}
+                  <div className="flex border-b border-gray-200 px-2">
+                    <button
+                      onClick={() => setActiveTab("available")}
+                      className={`px-3 py-2 text-xs font-medium transition-colors ${
+                        activeTab === "available"
+                          ? "text-blue-600 border-b-2 border-blue-600"
+                          : "text-slate-400 hover:text-slate-600"
+                      }`}
+                      data-testid="tab-available"
+                    >
+                      Available
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("unavailable")}
+                      className={`px-3 py-2 text-xs font-medium transition-colors ${
+                        activeTab === "unavailable"
+                          ? "text-blue-600 border-b-2 border-blue-600"
+                          : "text-slate-400 hover:text-slate-600"
+                      }`}
+                      data-testid="tab-unavailable"
+                    >
+                      Unavailable
+                    </button>
+                  </div>
+
+                  {/* Personnel List */}
+                  <div className="max-h-[220px] overflow-y-auto">
+                    {personnel.length > 0 ? (
+                      personnel.map((person) => (
+                        <button
+                          key={person.id}
+                          onClick={() => handleSelectPerson(person)}
+                          className={`w-full px-3 py-2.5 text-left border-b border-gray-50 last:border-b-0 transition-colors ${
+                            selectedPerson?.id === person.id ? "bg-blue-50" : "hover:bg-slate-50"
+                          }`}
+                          data-testid={`personnel-${person.id}`}
                         >
-                          {q}
-                        </Badge>
-                      ))}
-                    </div>
-                    {isSelected && (
-                      <div className="text-[10px] text-blue-600 mt-1 font-medium">
-                        {person.name} - Selected
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-slate-700">
+                              {person.callsign}
+                            </span>
+                            <span className="text-xs text-slate-400">
+                              Duties: {person.total_duties}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 mt-1 flex-wrap">
+                            {person.qualifications.map((q) => (
+                              <Badge
+                                key={q}
+                                variant="secondary"
+                                className="text-[9px] px-1.5 py-0 h-5 bg-slate-100 text-slate-500 font-normal border-0"
+                              >
+                                {q}
+                              </Badge>
+                            ))}
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-3 py-4 text-sm text-slate-400 text-center">
+                        No {activeTab} personnel found
                       </div>
                     )}
-                  </button>
-                );
-              })
-            ) : (
-              <div className="px-3 py-4 text-sm text-slate-400 text-center">
-                No {activeTab} personnel found
-              </div>
-            )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Footer: Add Personnels Button */}
+      {/* Footer: Add Personnel Button */}
       <div className="px-5 pt-4 pb-6 border-t border-gray-200 bg-white">
         <Button
-          onClick={handleAddPersonnels}
-          disabled={selectedPersonnel.length === 0 || loading}
+          onClick={handleAddPersonnel}
+          disabled={!selectedPerson || loading}
           className="w-full bg-slate-800 hover:bg-slate-900 text-white disabled:bg-slate-300"
           data-testid="add-personnels-btn"
         >
-          {recurrence ? "Create Recurring Duty" : "Add Personnels"}
-          {selectedPersonnel.length > 0 ? ` (${selectedPersonnel.length})` : ""}
+          {recurrence ? "Create Recurring Duty" : "Add Personnel"}
         </Button>
         <div className="h-8" />
       </div>
@@ -415,7 +406,7 @@ export default function DutySlotPanel({
         open={recurModalOpen}
         onClose={() => setRecurModalOpen(false)}
         onConfirm={handleRecurrenceConfirm}
-        dutyName={`${duty.duty_code} ${duty.duty_name.split(" - ")[1] || duty.duty_name}`}
+        dutyName={dutyDisplayName}
       />
     </div>
   );
