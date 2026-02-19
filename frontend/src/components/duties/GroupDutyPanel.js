@@ -89,7 +89,6 @@ export default function GroupDutyPanel({
   useEffect(() => {
     if (!open) {
       setSlotAssignments({});
-      setLocation("");
     }
   }, [open]);
 
